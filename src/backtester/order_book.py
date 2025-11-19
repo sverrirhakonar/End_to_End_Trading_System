@@ -5,12 +5,7 @@ import uuid
 class OrderBook:
 
     def __init__(self):
-        """
-        Initializes the order book.
-        - self.bids: A max-heap for buy orders. (Stores (-price, timestamp, order))
-        - self.asks: A min-heap for sell orders. (Stores (price, timestamp, order))
-        - self.orders: A dictionary for fast lookup and cancellation.
-        """
+        """ Initializes the order book. """
         # (price, timestamp, order)
         self.asks = []  # Min-heap
         # (-price, timestamp, order)
@@ -20,15 +15,7 @@ class OrderBook:
         print("OrderBook (Waiting Room): Initialized.")
 
     def add_order(self, order_details):
-        """
-        Adds a new, open order to the book.
-        This is called by the MatchingEngine when a limit order
-        is not immediately filled.
-        
-        Args:
-            order_details (dict): Contains order info, e.g.:
-                {'side': 'buy', 'qty': 100, 'price': 150.50, 'type': 'limit'}
-        """
+        """ Adds a new, open order to the book. """
         # 1. Create a full order object
         order = order_details.copy()
         order['id'] = str(uuid.uuid4()) # Assign a unique ID
@@ -49,9 +36,7 @@ class OrderBook:
         return order['id']
 
     def cancel_order(self, order_id):
-        """
-        Marks an order for cancellation ("lazy cancellation").
-        """
+        """ Marks an order for cancellation ("lazy cancellation"). """
         if order_id in self.orders:
             self.orders[order_id]['is_cancelled'] = True
             print(f"OrderBook: Order {order_id} marked for cancellation.")
@@ -61,9 +46,7 @@ class OrderBook:
             return False
 
     def modify_order(self, order_id, new_details):
-        """
-        Modifies an order by cancelling the old one and adding a new one.
-        """
+        """ Modifies an order by cancelling the old one and adding a new one. """
         if self.cancel_order(order_id):
             # Get old order details and create a new one
             old_order = self.orders[order_id]

@@ -28,9 +28,7 @@ class HistoricalDataGateway(BaseDataGateway):
             raise
 
     def get_next_tick(self):
-        """
-        Pulls the *next* row from the loaded CSV data.
-        """
+        """ Pulls the *next* row from the loaded CSV data. """
         try:
             tick_data = next(self._data_stream)
             return tick_data
