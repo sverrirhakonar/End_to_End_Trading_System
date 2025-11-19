@@ -4,22 +4,9 @@ from src.backtester.logger_gateway import OrderLogger
 import pandas as pd
 
 class SimulatedMatchingEngine:
-    """
-    This is the "middleman simulator" that:
-    1. Receives new orders from the strategy.
-    2. Checks waiting orders (from the OrderBook) against new data.
-    3. Simulates fills, partial fills, and rejections based on
-       historical tick data and randomness.
-    """
 
     def __init__(self, order_book: OrderBook, order_logger: OrderLogger):
-        """
-        Initializes the engine.
-        
-        Args:
-            order_book: An instance of your OrderBook (the "waiting room").
-            order_logger: An instance of your OrderLogger (the "log book").
-        """
+        """ Initializes the engine. """
         self.order_book = order_book
         self.order_logger = order_logger
         
@@ -33,17 +20,8 @@ class SimulatedMatchingEngine:
         print("SimulatedMatchingEngine: Initialized.")
 
     def process_order(self, order: dict, current_tick: 'pd.Series'):
-        """
-        Processes a *new* order from the strategy.
-        This is called *after* the OrderManager validates it.
-        
-        Args:
-            order (dict): The order from the strategy.
-            current_tick (pd.Series): The current market data bar.
-            
-        Returns:
-            A list of "fill" events (dicts), or an empty list.
-        """
+        """ Processes a *new* order from the strategy.
+        This is called *after* the OrderManager validates it. """
         
         # 1. Simulate random rejection (Requirement 2.4)
         if random.random() < self.fill_reject_chance:
@@ -124,16 +102,8 @@ class SimulatedMatchingEngine:
             return [] # No fills
 
     def check_open_orders(self, current_tick: 'pd.Series'):
-        """
-        This runs *every tick* to check the waiting orders in the
-        OrderBook against the new market data.
-        
-        Args:
-            current_tick (pd.Series): The new market data bar.
-            
-        Returns:
-            A list of "fill" events (dicts), or an empty list.
-        """
+        """ This runs *every tick* to check the waiting orders in the
+        OrderBook against the new market data. """
         fills = []
         
         # --- 1. Check waiting BUY orders ---
