@@ -1,7 +1,4 @@
-# src/backtester.py
-
 from typing import Dict, List, Tuple
-import json
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -16,7 +13,7 @@ from src.order_manager import OrderManager
 from src.position_manager import PositionManager, TradeRecord
 from src.order_book import OrderBook
 from src.simulatedMatchingEngine import SimulatedMatchingEngine
-from src.logger_gateway import OrderLogger
+from src.logger_gateway import OrderLogger, SignalLogger
 from model.models import MarketDataPoint
 
 
@@ -27,6 +24,20 @@ class WeightedStrategy:
 
 
 class Backtester:
+    """
+    Full backtest loop including:
+      - multi symbol data via MultiHistoricalDataGateway
+      - PriceManager indicators
+      - multiple strategies per symbol with weights
+      - signal aggregation
+      - ExecutionManager sizing
+      - OrderManager risk checks
+      - per symbol OrderBook and SimulatedMatchingEngine
+      - PositionManager updates on fill
+      - equity curve, trade log, stats
+      - prints settings and performance summary at the end
+    """
+
     def __init__(
         self,
         config_path: str,
@@ -35,6 +46,13 @@ class Backtester:
         strategies_by_symbol: Dict[str, List[WeightedStrategy]],
         execution_manager: ExecutionManager,
         order_manager: OrderManager,
+        order_logger: OrderLogger,
+        signal_logger: SignalLogger,
+        market_cfg,
+        strat_cfg,
+        exec_cfg,
+        init_portfolio_cfg,
+        order_mgr_params,
     ):
         self.data_gateway = MultiHistoricalDataGateway(config_path)
         self.pm = price_manager
@@ -43,13 +61,25 @@ class Backtester:
         self.exec_mgr = execution_manager
         self.order_mgr = order_manager
 
-        self.order_logger = OrderLogger()
+        self.order_logger = order_logger
+        self.signal_logger = signal_logger
+
+        # configs to show at the end
+        self.market_cfg = market_cfg
+        self.strat_cfg = strat_cfg
+        self.exec_cfg = exec_cfg
+        self.init_portfolio_cfg = init_portfolio_cfg
+        self.order_mgr_params = order_mgr_params
 
         self.order_books: Dict[str, OrderBook] = {}
         self.matching_engines: Dict[str, SimulatedMatchingEngine] = {}
 
+        # list of (timestamp, equity)
         self.equity_curve: List[Tuple[datetime, float]] = []
 
+    # ------------------------------------------------------------------
+    # public entry point
+    # ------------------------------------------------------------------
     def run(self, max_steps: int | None = None):
         step = 0
 
@@ -68,7 +98,11 @@ class Backtester:
 
         self._final_report()
 
+    # ------------------------------------------------------------------
+    # one step
+    # ------------------------------------------------------------------
     def _process_step(self, ticks: Dict[str, tuple]):
+        # lazily create order book + matching engine per symbol
         for symbol, (_, _) in ticks.items():
             if symbol not in self.order_books:
                 ob = OrderBook()
@@ -80,13 +114,16 @@ class Backtester:
                 self.order_books[symbol] = ob
                 self.matching_engines[symbol] = me
 
+        # 1 - check existing open limit orders against new tick
         for symbol, (timestamp, bar) in ticks.items():
             engine = self.matching_engines[symbol]
             engine.check_open_orders(bar)
 
+        # 2 - update price history
         for symbol, (timestamp, bar) in ticks.items():
             self.pm.update(symbol, bar)
 
+        # 3 - run strategies and collect signals
         signals: List[Signal] = []
 
         for symbol, (ts, bar) in ticks.items():
@@ -100,10 +137,14 @@ class Backtester:
                 out = ws.strategy.generate_signals(mdp)
                 if not out:
                     continue
+
                 for s in out:
                     s.strength *= ws.weight
                     signals.append(s)
+                    # log weighted signal
+                    self.signal_logger.log_signal(timestamp=ts, signal=s)
 
+        # 4 - bundle signals and have ExecutionManager create orders
         if signals:
             bundle = SignalBundle.from_signals(signals)
 
@@ -115,6 +156,7 @@ class Backtester:
                 timestamp=bar_ts,
             )
 
+            # 5 - risk checks in OrderManager
             accepted = []
             for o in raw_orders:
                 cap = self.exec_mgr.cash
@@ -126,15 +168,20 @@ class Backtester:
                 ):
                     accepted.append(o)
 
+            # 6 - route accepted orders to symbol specific matching engines
             for order in accepted:
                 _, bar = ticks[order.symbol]
                 engine = self.matching_engines[order.symbol]
                 engine.process_order(order, bar)
 
+        # 7 - record equity for this bar
         bar_timestamp = next(iter(ticks.values()))[0]
         equity = self.exec_mgr.get_portfolio_value()
         self.equity_curve.append((bar_timestamp.to_pydatetime(), equity))
 
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
     def _build_market_data_point(self, sym, ts, bar) -> MarketDataPoint:
         vol = bar.get("Volume", 0)
         q = int(vol if not pd.isna(vol) else 0)
@@ -165,6 +212,7 @@ class Backtester:
                     "position_after",
                 ]
             )
+
         data = [
             {
                 "timestamp": tr.timestamp,
@@ -180,26 +228,124 @@ class Backtester:
         df = pd.DataFrame(data).set_index("timestamp")
         return df.sort_index()
 
+    # ------------------------------------------------------------------
+    # settings printout
+    # ------------------------------------------------------------------
+    def _print_run_settings(self):
+        market_cfg = self.market_cfg
+        strat_cfg = self.strat_cfg
+        exec_cfg = self.exec_cfg
+        init_portfolio_cfg = self.init_portfolio_cfg
+        order_mgr_params = self.order_mgr_params
+
+        print("=" * 70)
+        print("BACKTEST CONFIGURATION")
+        print("=" * 70)
+
+        # market data sources
+        print("\nMarket data sources:")
+        print(f"{'Ticker':10s} {'CSV path':40s} {'Timeframe':10s} {'Bar':6s}")
+        print("-" * 70)
+        for entry in market_cfg:
+            ticker = str(entry.get("ticker", ""))
+            path = str(entry.get("csv_filepath", ""))[:38]
+            timeframe = str(entry.get("timeframe", ""))
+            bar = str(entry.get("bar", ""))
+            print(f"{ticker:10s} {path:40s} {timeframe:10s} {bar:6s}")
+
+        # initial portfolio
+        print("\nInitial portfolio:")
+        cash = init_portfolio_cfg.get("cash", 0.0)
+        positions = init_portfolio_cfg.get("positions", {})
+        print(f"{'Starting cash:':20s} {cash:12.2f}")
+        if positions:
+            print(f"{'Symbol':10s} {'Quantity':>10s} {'Avg price':>12s}")
+            print("-" * 40)
+            for sym, p in positions.items():
+                qty = p.get("quantity", 0.0)
+                avg = p.get("avg_price", 0.0)
+                print(f"{sym:10s} {qty:10.2f} {avg:12.4f}")
+        else:
+            print("No starting positions.")
+
+        # execution settings
+        print("\nExecution settings (ExecutionManager):")
+        print(f"{'max_positions:':25s} {exec_cfg.get('max_positions', 0)}")
+        print(
+            f"{'max_symbol_weight:':25s} "
+            f"{exec_cfg.get('max_symbol_weight', 0.0):.2f}"
+        )
+        print(
+            f"{'min_position_value:':25s} "
+            f"{exec_cfg.get('min_position_value', 0.0):.2f}"
+        )
+        print(
+            f"{'min_trade_value:':25s} "
+            f"{exec_cfg.get('min_trade_value', 0.0):.2f}"
+        )
+        print(
+            f"{'base_weight_per_symbol:':25s} "
+            f"{exec_cfg.get('base_weight_per_symbol', 0.0):.3f}"
+        )
+        print(
+            f"{'weight_per_strength_unit:':25s} "
+            f"{exec_cfg.get('weight_per_strength_unit', 0.0):.3f}"
+        )
+        print(
+            f"{'max_strength_multiplier:':25s} "
+            f"{exec_cfg.get('max_strength_multiplier', 0.0):.2f}"
+        )
+        print(f"{'default_order_type:':25s} {exec_cfg.get('default_order_type', '')}")
+
+        # order manager risk
+        print("\nRisk settings (OrderManager):")
+        print(
+            f"{'max_orders_per_minute:':25s} "
+            f"{order_mgr_params.get('max_orders_per_minute', 0)}"
+        )
+        print(
+            f"{'max_position_size:':25s} "
+            f"{order_mgr_params.get('max_position_size', 0)}"
+        )
+
+        # strategies
+        print("\nStrategies per symbol:")
+        print(f"{'Symbol':8s} {'Strategy':28s} {'Weight':>8s} {'Params'}")
+        print("-" * 70)
+        for symbol, strat_list in strat_cfg.items():
+            for entry in strat_list:
+                class_name = entry.get("class", "")
+                weight = entry.get("weight", 1.0)
+                params = entry.get("params", {})
+                params_str = ", ".join(f"{k}={v}" for k, v in params.items())
+                print(f"{symbol:8s} {class_name:28s} {weight:8.2f} {params_str}")
+        print("=" * 70)
+
+    # ------------------------------------------------------------------
+    # final stats
+    # ------------------------------------------------------------------
     def _final_report(self):
+        # settings first
+        self._print_run_settings()
+
         eq_df = self.get_equity_curve_dataframe()
         trade_df = self.get_trade_dataframe()
 
-        print("Backtester: end of data.")
+        print("\n" + "=" * 70)
+        print("BACKTEST PERFORMANCE SUMMARY")
+        print("=" * 70)
 
         if not eq_df.empty:
             eq_series = eq_df["equity"]
 
-            # total return
             start_val = eq_series.iloc[0]
             end_val = eq_series.iloc[-1]
             total_return = (end_val / start_val - 1.0) if start_val != 0 else 0.0
 
-            # max drawdown
             running_max = eq_series.cummax()
             drawdown = (eq_series - running_max) / running_max
             max_dd = drawdown.min()
 
-            # per period returns
             rets = eq_series.pct_change().dropna()
 
             ann_vol = None
@@ -209,7 +355,6 @@ class Backtester:
                 per_period_vol = rets.std()
                 per_period_ret = rets.mean()
 
-                # infer bar frequency from timestamps
                 diffs = eq_df.index.to_series().diff().dropna()
                 if not diffs.empty:
                     dt_sec = diffs.dt.total_seconds().median()
@@ -221,15 +366,23 @@ class Backtester:
                 if periods_per_year > 0.0:
                     ann_vol = per_period_vol * (periods_per_year ** 0.5)
                     if per_period_vol > 0.0:
-                        ann_sharpe = (per_period_ret / per_period_vol) * (periods_per_year ** 0.5)
+                        ann_sharpe = (
+                            per_period_ret / per_period_vol
+                        ) * (periods_per_year ** 0.5)
 
-            print(f"Total return: {total_return:.2%}")
-            print(f"Max drawdown: {max_dd:.2%}")
+            print(f"{'Start equity:':25s} {start_val:12.2f}")
+            print(f"{'End equity:':25s} {end_val:12.2f}")
+            print(f"{'Total return:':25s} {total_return:11.2%}")
+            print(f"{'Max drawdown:':25s} {max_dd:11.2%}")
 
             if ann_vol is not None:
-                print(f"Volatility (annualized): {ann_vol:.2%}")
+                print(f"{'Volatility (annualized):':25s} {ann_vol:11.2%}")
             if ann_sharpe is not None:
-                print(f"Sharpe ratio (rf=0): {ann_sharpe:.2f}")
+                print(f"{'Sharpe ratio (rf=0):':25s} {ann_sharpe:11.2f}")
+        else:
+            print("No equity data recorded.")
+
+        print("-" * 70)
 
         if not trade_df.empty:
             total_realized = trade_df["realized_pnl"].sum()
@@ -239,11 +392,16 @@ class Backtester:
             num_trades = len(trade_df)
             win_rate = wins / num_trades if num_trades > 0 else 0.0
 
-            print(f"Number of trades: {num_trades}")
-            print(f"Total realized PnL: {total_realized:.2f}")
-            print(f"Average trade PnL: {avg_trade:.2f}")
-            print(f"Win rate: {win_rate:.2%}")
-            print(f"Wins: {wins}, Losses: {losses}")
+            print(f"{'Number of trades:':25s} {num_trades:12d}")
+            print(f"{'Total realized PnL:':25s} {total_realized:12.2f}")
+            print(f"{'Average trade PnL:':25s} {avg_trade:12.2f}")
+            print(f"{'Win rate:':25s} {win_rate:11.2%}")
+            print(f"{'Wins:':25s} {wins:12d}")
+            print(f"{'Losses:':25s} {losses:12d}")
+        else:
+            print("No trades recorded.")
 
-        print("Final cash:", self.pmgr.get_cash())
-        print("Final positions:", self.pmgr.snapshot_positions())
+        print("-" * 70)
+        print(f"{'Final cash:':25s} {self.pmgr.get_cash():12.2f}")
+        print(f"{'Final positions:':25s} {self.pmgr.snapshot_positions()}")
+        print("=" * 70)
