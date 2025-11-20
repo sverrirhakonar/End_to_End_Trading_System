@@ -1,0 +1,11 @@
+{
+    "default_order_type": "MARKET",
+    "max_positions": 10,
+    "max_symbol_weight": 0.2,
+    "min_position_value": 1000.0,
+    "min_trade_value": 500.0,
+    "base_weight_per_symbol": 0.03,
+    "weight_per_strength_unit": 0.02,
+    "max_strength_multiplier": 2.0
+  }
+  
