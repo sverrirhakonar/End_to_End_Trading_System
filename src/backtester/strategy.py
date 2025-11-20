@@ -32,7 +32,6 @@ class MovingAverageStrategy(Strategy):
 
         if len(self.prices) < self.window:
             return []
-
         mean = self._running_sum / self.window
 
         if price < mean:
