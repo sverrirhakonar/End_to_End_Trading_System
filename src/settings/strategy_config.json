@@ -1,0 +1,32 @@
+{
+    "META": [
+      {
+        "class": "MomentumStrategy",
+        "weight": 1.0,
+        "params": {
+          "period": 20,
+          "threshold": 0.02
+        }
+      },
+      {
+        "class": "MovingAverageCrossoverStrategy",
+        "weight": 0.5,
+        "params": {
+          "fast": 10,
+          "slow": 50
+        }
+      }
+    ],
+    "AAPL": [
+      {
+        "class": "RsiReversionStrategy",
+        "weight": 1.0,
+        "params": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30
+        }
+      }
+    ]
+  }
+  

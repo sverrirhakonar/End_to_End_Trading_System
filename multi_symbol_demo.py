@@ -3,7 +3,7 @@ from src.gateways.multi_historical_data_gateway import MultiHistoricalDataGatewa
 
 def main():
     gateway = MultiHistoricalDataGateway(
-        "settings/market_data_config.json"
+        "src/settings/market_data_config.json"
     )
 
     for step in range(5):
