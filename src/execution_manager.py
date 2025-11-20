@@ -2,10 +2,10 @@ import json
 from uuid import uuid4
 from typing import Dict, Any, Optional, List
 
-from src.backtester.price_manager import PriceManager
-from src.backtester.signals import SignalBundle, AggregatedSymbolSignal
-from src.backtester.order import Order  # adjust path if needed
-from src.backtester.position_manager import PositionManager  # adjust path if needed
+from src.price_manager import PriceManager
+from src.signals import SignalBundle, AggregatedSymbolSignal
+from src.order import Order  # adjust path if needed
+from src.position_manager import PositionManager  # adjust path if needed
 
 
 class ExecutionManager:

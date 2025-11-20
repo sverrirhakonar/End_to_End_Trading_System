@@ -1,7 +1,7 @@
 import csv
 import os
 import datetime
-from src.backtester.order import Order
+from src.order import Order
 
 class OrderLogger:
     """ Logging Gateway for Backtester """

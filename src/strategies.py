@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from dataclasses import dataclass
 from model.models import MarketDataPoint
-from src.backtester.price_manager import PriceManager
-from src.backtester.signals import Signal
+from src.price_manager import PriceManager
+from src.signals import Signal
 
 class Strategy(ABC):
     @abstractmethod

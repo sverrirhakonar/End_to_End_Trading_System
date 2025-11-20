@@ -1,6 +1,6 @@
 import heapq
 import uuid
-from src.backtester.order import Order
+from src.order import Order
 
 class OrderBook:
 

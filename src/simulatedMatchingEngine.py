@@ -1,7 +1,7 @@
 import random
-from src.backtester.order_book import OrderBook
-from src.backtester.logger_gateway import OrderLogger
-from src.backtester.order import Order
+from src.order_book import OrderBook
+from src.logger_gateway import OrderLogger
+from src.order import Order
 import pandas as pd
 
 class SimulatedMatchingEngine:

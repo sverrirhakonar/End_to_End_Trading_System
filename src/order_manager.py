@@ -1,6 +1,6 @@
 from collections import deque
 import pandas as pd
-from src.backtester.order import Order
+from src.order import Order
 
 class OrderManager:
     """
