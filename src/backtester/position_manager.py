@@ -50,7 +50,7 @@ class PositionManager:
         qty = order.filled_quantity
         price = order.filled_price
         symbol = order.symbol
-        side = order.order_type
+        side = order.side 
 
         side_up = side.upper()
         signed_qty = qty if side_up == "BUY" else -qty
