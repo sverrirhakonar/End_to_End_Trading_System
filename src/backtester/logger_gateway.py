@@ -1,6 +1,7 @@
 import csv
 import os
 import datetime
+from src.backtester.order import Order
 
 class OrderLogger:
     """ Logging Gateway for Backtester """
@@ -48,22 +49,31 @@ class OrderLogger:
             print(f"OrderLogger: FATAL Error initializing log file: {e}")
             raise
 
-    def log_event(self, event_type: str, order: dict, reason: str = "", fill_qty: int = 0, fill_price: float = 0.0):
+    def log_event(self, event_type: str, order: Order, tick_timestamp, reason: str = "", fill_qty: int = 0, fill_price: float = 0.0):
         """ Writes a single event to the CSV log file.
-        This is the main function called by the backtester. """
+        This is the main function called by the backtester. 
+        
+        Args:
+            event_type: e.g., 'SENT', 'FILLED', 'REJECTED', 'CANCELLED'
+            order: Order object containing order details
+            tick_timestamp: Timestamp of the market tick that triggered this event
+            reason: Optional reason string (for rejections, cancellations)
+            fill_qty: Quantity filled (for FILLED events)
+            fill_price: Price filled at (for FILLED events)
+        """
         try:
-            # 1. Get the current time for the log entry
-            log_time = datetime.datetime.now()
+            # 1. Use the tick timestamp that triggered the event
+            log_time = tick_timestamp
             
-            # 2. Build the row to write
+            # 2. Build the row to write using Order object attributes
             log_row = {
                 'timestamp': log_time,
                 'event_type': event_type,
-                'order_id': order.get('id', 'N/A'), # Use .get() for safety
-                'side': order.get('side'),
-                'type': order.get('type'),
-                'qty': order.get('qty'),
-                'price': order.get('price'),
+                'order_id': order.order_id,
+                'side': order.side if hasattr(order, 'side') else 'N/A',
+                'type': order.order_type,
+                'qty': order.quantity,
+                'price': order.price,
                 'fill_qty': fill_qty,
                 'fill_price': fill_price,
                 'reason': reason

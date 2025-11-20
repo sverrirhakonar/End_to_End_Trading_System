@@ -1,6 +1,6 @@
 import heapq
-import time
 import uuid
+from src.backtester.order import Order
 
 class OrderBook:
 
@@ -14,31 +14,30 @@ class OrderBook:
         self.orders = {} # Fast lookup for cancellation
         print("OrderBook (Waiting Room): Initialized.")
 
-    def add_order(self, order_details):
+    def add_order(self, order: Order):
         """ Adds a new, open order to the book. """
-        # 1. Create a full order object
-        order = order_details.copy()
-        order['id'] = str(uuid.uuid4()) # Assign a unique ID
-        order['timestamp'] = time.time() #################### Maybe use the time of the tick???????
-        order['is_cancelled'] = False
+        # 1. Set order ID if not already set
+        if order.order_id is None:
+            order.order_id = str(uuid.uuid4())
+        order.is_cancelled = False
         
         # 2. Store the order for fast lookup
-        self.orders[order['id']] = order
+        self.orders[order.order_id] = order
         
         # 3. Add the order to the correct heap
-        if order['side'] == 'buy':
-            heap_item = (-order['price'], order['timestamp'], order)
+        if order.side == 'BUY':
+            heap_item = (-order.price, order.timestamp, order)
             heapq.heappush(self.bids, heap_item)
         else:
-            heap_item = (order['price'], order['timestamp'], order)
+            heap_item = (order.price, order.timestamp, order)
             heapq.heappush(self.asks, heap_item)
                 
-        return order['id']
+        return order.order_id
 
     def cancel_order(self, order_id):
         """ Marks an order for cancellation ("lazy cancellation"). """
         if order_id in self.orders:
-            self.orders[order_id]['is_cancelled'] = True
+            self.orders[order_id].is_cancelled = True
             print(f"OrderBook: Order {order_id} marked for cancellation.")
             return True
         else:
@@ -48,14 +47,17 @@ class OrderBook:
     def modify_order(self, order_id, new_details):
         """ Modifies an order by cancelling the old one and adding a new one. """
         if self.cancel_order(order_id):
-            # Get old order details and create a new one
+            # Get old order and create a new one with modifications
             old_order = self.orders[order_id]
-            new_order = {
-                'side': old_order['side'],
-                'qty': new_details.get('qty', old_order['qty']),
-                'price': new_details.get('price', old_order['price']),
-                'type': old_order['type']
+            new_order_dict = {
+                'side': old_order.side,
+                'quantity': new_details.get('quantity', old_order.quantity),
+                'price': new_details.get('price', old_order.price),
+                'order_type': old_order.order_type,
+                'symbol': old_order.symbol,
+                'timestamp': old_order.timestamp
             }
+            new_order = Order(new_order_dict)
             return self.add_order(new_order)
         else:
             return None # Old order not found
@@ -64,7 +66,7 @@ class OrderBook:
         """Returns the full order at the highest bid (or None)."""
         while self.bids:
             price_neg, _, order = self.bids[0]
-            if order['is_cancelled']:
+            if order.is_cancelled:
                 heapq.heappop(self.bids) # Clean up cancelled orders
                 continue
             return order
@@ -74,7 +76,7 @@ class OrderBook:
         """Returns the full order at the lowest ask (or None)."""
         while self.asks:
             price, _, order = self.asks[0]
-            if order['is_cancelled']:
+            if order.is_cancelled:
                 heapq.heappop(self.asks) # Clean up cancelled orders
                 continue
             return order
@@ -84,9 +86,9 @@ class OrderBook:
         """Removes and returns the best bid order."""
         while self.bids:
             price_neg, _, order = heapq.heappop(self.bids)
-            if order['is_cancelled']:
+            if order.is_cancelled:
                 continue
-            del self.orders[order['id']]
+            del self.orders[order.order_id]
             return order
         return None
         
@@ -94,8 +96,8 @@ class OrderBook:
         """Removes and returns the best ask order."""
         while self.asks:
             price, _, order = heapq.heappop(self.asks)
-            if order['is_cancelled']:
+            if order.is_cancelled:
                 continue
-            del self.orders[order['id']]
+            del self.orders[order.order_id]
             return order
         return None

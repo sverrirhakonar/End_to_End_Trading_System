@@ -7,9 +7,10 @@ class Order:
         self.quantity = order_dict.get("quantity")
         self.price = order_dict.get("price")
         self.order_type = order_dict.get("order_type")  
-        self.staturs = "Pending"  
+        self.status = "Pending"  
         self.filled_price = None  
         self.filled_quantity = None  
         self.filled_timestamp =  None  
+        self.is_cancelled = False
 
     

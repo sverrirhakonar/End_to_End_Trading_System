@@ -1,5 +1,6 @@
 from collections import deque
 import pandas as pd
+from src.backtester.order import Order
 
 class OrderManager:
     """
@@ -18,10 +19,10 @@ class OrderManager:
         self.order_timestamps = deque()
         
 
-    def validate_order(self, order: dict, current_capital: float, current_position_size: int):
+    def validate_order(self, order: Order, current_capital: float, current_position_size: int):
         
         # --- 1. Check for Orders Per Minute ---
-        new_time = order['timestamp']
+        new_time = order.timestamp
         
         # more than 1 minute older than the new order.
         one_minute_ago = new_time - pd.Timedelta('1 minute')
@@ -34,27 +35,27 @@ class OrderManager:
             return False
             
         # --- 2. Check for Capital Sufficiency ---
-        required_capital = order['qty'] * order['price']
+        required_capital = order.quantity * order.price
         
-        if required_capital > current_capital and order['side'] == 'BUY':
+        if required_capital > current_capital and order.side == 'BUY':
             print(f"Risk Check FAILED: Not enough capital. (Need: ${required_capital:.2f}, Have: ${current_capital:.2f})")
             return False
             
         # --- 3. Check for Position Limits ---
-        if order['side'] == 'BUY':
-            new_position = current_position_size + order['qty']
+        if order.side == 'BUY':
+            new_position = current_position_size + order.quantity
             if new_position > self.max_position_size:
                 print(f"Risk Check FAILED: Order would exceed max position size. (Limit: {self.max_position_size})")
                 return False
         else: # 'SELL'
-            new_position = current_position_size - order['qty']
+            new_position = current_position_size - order.quantity
             # We assume we can't go "short" (negative shares)
             if new_position < 0:
-                print(f"Risk Check FAILED: Cannot sell more shares than you own. (Have: {current_position_size}, Sell: {order['qty']})")
+                print(f"Risk Check FAILED: Cannot sell more shares than you own. (Have: {current_position_size}, Sell: {order.quantity})")
                 return False
 
         # --- If all checks pass ---
-        print(f"Risk Check PASSED: Order {order['side']} {order['qty']} @ {order['price']:.2f}")
+        print(f"Risk Check PASSED: Order {order.side} {order.quantity} @ {order.price:.2f}")
 
         self.order_timestamps.append(new_time)
         return True
