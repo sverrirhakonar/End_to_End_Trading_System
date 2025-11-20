@@ -2,7 +2,6 @@ import pandas as pd
 from src.gateways.base_gateway import BaseDataGateway
 
 class HistoricalDataGateway(BaseDataGateway):
-
     def __init__(self, csv_filepath: str):
 
         try:

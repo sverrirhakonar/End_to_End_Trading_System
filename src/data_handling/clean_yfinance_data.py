@@ -17,25 +17,6 @@ def clean_and_organize_yfinance_data(filename):
     df.drop_duplicates(inplace=True)
     df = df.astype(float)
 
-    # Add derived features
-    df['Returns'] = df['Close'].pct_change()
-    df['Price_Change'] = df['Close'].diff()
-    
-    df['MA_5'] = df['Close'].rolling(window=5, min_periods=1).mean()
-    df['MA_10'] = df['Close'].rolling(window=10, min_periods=1).mean()
-    df['MA_20'] = df['Close'].rolling(window=20, min_periods=1).mean()
-    df['MA_50'] = df['Close'].rolling(window=50, min_periods=1).mean()
-    df['MA_100'] = df['Close'].rolling(window=100, min_periods=1).mean()
-    df['MA_200'] = df['Close'].rolling(window=200, min_periods=1).mean()
-
-    df['Vol_5'] = df['Returns'].rolling(window=5, min_periods=1).std()
-    df['Vol_10'] = df['Returns'].rolling(window=10,min_periods=1).std()
-    df['Vol_20'] = df['Returns'].rolling(window=20,min_periods=1).std()
-    df['Vol_50'] = df['Returns'].rolling(window=50,min_periods=1).std()
-    df['Vol_100'] = df['Returns'].rolling(window=100,min_periods=1).std()
-    df['Vol_200'] = df['Returns'].rolling(window=200,min_periods=1).std()
-    df.dropna(inplace=True)
-
     return df
 
 def save_cleaned_data(df, filename):
