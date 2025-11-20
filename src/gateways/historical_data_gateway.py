@@ -38,3 +38,6 @@ class HistoricalDataGateway(BaseDataGateway):
         except Exception as e:
             print(f"Error streaming next tick: {e}")
             return None
+
+    def has_data(self) -> bool:
+        return self._has_data
