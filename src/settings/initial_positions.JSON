@@ -1,8 +1,6 @@
 {
-    "cash": 100000.0,
+    "cash": 200000.0,
     "positions": {
-      "AAPL": { "quantity": 50, "avg_price": 175.25 },
-      "MSFT": { "quantity": -20, "avg_price": 310.50 }
     }
   }
   

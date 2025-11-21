@@ -77,9 +77,9 @@ class Backtester:
         # list of (timestamp, equity)
         self.equity_curve: List[Tuple[datetime, float]] = []
 
-    # ------------------------------------------------------------------
+
     # public entry point
-    # ------------------------------------------------------------------
+
     def run(self, max_steps: int | None = None):
         step = 0
 
@@ -98,9 +98,7 @@ class Backtester:
 
         self._final_report()
 
-    # ------------------------------------------------------------------
-    # one step
-    # ------------------------------------------------------------------
+
     def _process_step(self, ticks: Dict[str, tuple]):
         # lazily create order book + matching engine per symbol
         for symbol, (_, _) in ticks.items():
@@ -179,9 +177,9 @@ class Backtester:
         equity = self.exec_mgr.get_portfolio_value()
         self.equity_curve.append((bar_timestamp.to_pydatetime(), equity))
 
-    # ------------------------------------------------------------------
+
     # helpers
-    # ------------------------------------------------------------------
+
     def _build_market_data_point(self, sym, ts, bar) -> MarketDataPoint:
         vol = bar.get("Volume", 0)
         q = int(vol if not pd.isna(vol) else 0)
@@ -228,9 +226,8 @@ class Backtester:
         df = pd.DataFrame(data).set_index("timestamp")
         return df.sort_index()
 
-    # ------------------------------------------------------------------
     # settings printout
-    # ------------------------------------------------------------------
+
     def _print_run_settings(self):
         market_cfg = self.market_cfg
         strat_cfg = self.strat_cfg
@@ -321,9 +318,7 @@ class Backtester:
                 print(f"{symbol:8s} {class_name:28s} {weight:8.2f} {params_str}")
         print("=" * 70)
 
-    # ------------------------------------------------------------------
     # final stats
-    # ------------------------------------------------------------------
     def _final_report(self):
         # settings first
         self._print_run_settings()
