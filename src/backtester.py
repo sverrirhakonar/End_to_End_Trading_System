@@ -1,6 +1,9 @@
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+import sys
+import os
+from contextlib import contextmanager
 
 import pandas as pd
 
@@ -15,6 +18,25 @@ from src.order_book import OrderBook
 from src.simulatedMatchingEngine import SimulatedMatchingEngine
 from src.logger_gateway import OrderLogger, SignalLogger
 from model.models import MarketDataPoint
+
+
+@contextmanager
+def suppress_all_output():
+    """
+    Temporarily redirect stdout and stderr to os.devnull.
+    Use this to silence all prints that happen inside the block.
+    """
+    devnull = open(os.devnull, "w")
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    try:
+        sys.stdout = devnull
+        sys.stderr = devnull
+        yield
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+        devnull.close()
 
 
 @dataclass
@@ -36,6 +58,8 @@ class Backtester:
       - PositionManager updates on fill
       - equity curve, trade log, stats
       - prints settings and performance summary at the end
+
+    If suppress_output is True, all prints during run() are muted.
     """
 
     def __init__(
@@ -53,6 +77,7 @@ class Backtester:
         exec_cfg,
         init_portfolio_cfg,
         order_mgr_params,
+        suppress_output: bool = False,
     ):
         self.data_gateway = MultiHistoricalDataGateway(config_path)
         self.pm = price_manager
@@ -77,10 +102,24 @@ class Backtester:
         # list of (timestamp, equity)
         self.equity_curve: List[Tuple[datetime, float]] = []
 
+        # if True, suppress all prints during run()
+        self.suppress_output = suppress_output
 
     # public entry point
 
     def run(self, max_steps: int | None = None):
+        """
+        Run the backtest.
+        If self.suppress_output is True, printing to stdout and stderr from
+        this call and anything it invokes will be muted.
+        """
+        if self.suppress_output:
+            with suppress_all_output():
+                self._run_internal(max_steps)
+        else:
+            self._run_internal(max_steps)
+
+    def _run_internal(self, max_steps: int | None = None):
         step = 0
 
         while True:
@@ -98,9 +137,8 @@ class Backtester:
 
         self._final_report()
 
-
     def _process_step(self, ticks: Dict[str, tuple]):
-        # lazily create order book + matching engine per symbol
+        # lazily create order book and matching engine per symbol
         for symbol, (_, _) in ticks.items():
             if symbol not in self.order_books:
                 ob = OrderBook()
@@ -112,16 +150,16 @@ class Backtester:
                 self.order_books[symbol] = ob
                 self.matching_engines[symbol] = me
 
-        # 1 - check existing open limit orders against new tick
+        # 1 check existing open limit orders against new tick
         for symbol, (timestamp, bar) in ticks.items():
             engine = self.matching_engines[symbol]
             engine.check_open_orders(bar)
 
-        # 2 - update price history
+        # 2 update price history
         for symbol, (timestamp, bar) in ticks.items():
             self.pm.update(symbol, bar)
 
-        # 3 - run strategies and collect signals
+        # 3 run strategies and collect signals
         signals: List[Signal] = []
 
         for symbol, (ts, bar) in ticks.items():
@@ -142,7 +180,7 @@ class Backtester:
                     # log weighted signal
                     self.signal_logger.log_signal(timestamp=ts, signal=s)
 
-        # 4 - bundle signals and have ExecutionManager create orders
+        # 4 bundle signals and have ExecutionManager create orders
         if signals:
             bundle = SignalBundle.from_signals(signals)
 
@@ -154,7 +192,7 @@ class Backtester:
                 timestamp=bar_ts,
             )
 
-            # 5 - risk checks in OrderManager
+            # 5 risk checks in OrderManager
             accepted = []
             for o in raw_orders:
                 cap = self.exec_mgr.cash
@@ -166,17 +204,16 @@ class Backtester:
                 ):
                     accepted.append(o)
 
-            # 6 - route accepted orders to symbol specific matching engines
+            # 6 route accepted orders to symbol specific matching engines
             for order in accepted:
                 _, bar = ticks[order.symbol]
                 engine = self.matching_engines[order.symbol]
                 engine.process_order(order, bar)
 
-        # 7 - record equity for this bar
+        # 7 record equity for this bar
         bar_timestamp = next(iter(ticks.values()))[0]
         equity = self.exec_mgr.get_portfolio_value()
         self.equity_curve.append((bar_timestamp.to_pydatetime(), equity))
-
 
     # helpers
 
@@ -380,11 +417,22 @@ class Backtester:
         print("-" * 70)
 
         if not trade_df.empty:
-            total_realized = trade_df["realized_pnl"].sum()
-            avg_trade = trade_df["realized_pnl"].mean()
-            wins = (trade_df["realized_pnl"] > 0).sum()
-            losses = (trade_df["realized_pnl"] < 0).sum()
-            num_trades = len(trade_df)
+            # [Inference] realized_pnl might be cumulative in TradeRecord.
+            # To handle both cases, we use a simple heuristic:
+            # if sum of abs values is much larger than abs(last), we treat it
+            # as cumulative and convert to per trade with diff.
+            cum = trade_df["realized_pnl"].astype(float)
+
+            if len(cum) > 1 and cum.abs().sum() > cum.abs().iloc[-1] * 2:
+                per_trade = cum.diff().fillna(cum.iloc[0])
+            else:
+                per_trade = cum
+
+            total_realized = per_trade.sum()
+            avg_trade = per_trade.mean()
+            wins = (per_trade > 0).sum()
+            losses = (per_trade < 0).sum()
+            num_trades = len(per_trade)
             win_rate = wins / num_trades if num_trades > 0 else 0.0
 
             print(f"{'Number of trades:':25s} {num_trades:12d}")

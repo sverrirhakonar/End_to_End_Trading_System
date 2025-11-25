@@ -603,18 +603,6 @@ def main():
     print("==============================")
     print(dfs["Params_RsiReversionStrategy"])
 
-    # Excel output
-
-    _os.makedirs("logs", exist_ok=True)
-    excel_path = _os.path.join("logs", "sensitivity_report.xlsx")
-
-    with pd.ExcelWriter(excel_path, engine="xlsxwriter") as writer:
-        for sheet_name, df in dfs.items():
-            safe_sheet_name = sheet_name[:31]
-            df.to_excel(writer, sheet_name=safe_sheet_name)
-
-    print(f"\nExcel sensitivity report written to: {excel_path}")
-
 
 if __name__ == "__main__":
     main()
