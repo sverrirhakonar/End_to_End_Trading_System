@@ -65,6 +65,17 @@ python multi_symbol_demo.py
 
 Demonstrates multi-ticker data streaming from the gateway.
 
+### 4. Run a sensitivity report on your backtest
+
+```bash
+python run_sensitivity_report_backtester.py
+```
+
+Runs many backtests in parallel to generate what-if analysis tables.
+It varies execution settings, strategy weights, and strategy parameters, runs each configuration as a separate job, and collects the Sharpe ratios into structured sensitivity tables.
+All results are printed and saved to logs/sensitivity_report.xlsx.
+Use this file to analyze parameter impact, compare configurations, and perform systematic research.
+
 ## Configuration
 
 Configuration files are in `src/settings/`:
