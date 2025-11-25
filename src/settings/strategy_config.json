@@ -15,6 +15,15 @@
           "fast": 10,
           "slow": 50
         }
+      },
+      {
+        "class": "RsiReversionStrategy",
+        "weight": 1.0,
+        "params": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30
+        }
       }
     ],
     "AAPL": [

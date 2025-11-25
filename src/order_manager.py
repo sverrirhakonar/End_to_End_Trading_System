@@ -49,7 +49,7 @@ class OrderManager:
 
         if len(self.order_timestamps) >= self.max_orders_per_minute:
             reason = f"Too many orders per minute. (Limit: {self.max_orders_per_minute})"
-            print(f"Risk Check FAILED: {reason}")
+            #print(f"Risk Check FAILED: {reason}")
             self._log_risk_event("RISK_FAIL", order, reason)
             return False
 
@@ -60,7 +60,7 @@ class OrderManager:
                 f"Not enough capital. "
                 f"(Need: ${required_capital:.2f}, Have: ${current_capital:.2f})"
             )
-            print(f"Risk Check FAILED: {reason}")
+            #print(f"Risk Check FAILED: {reason}")
             self._log_risk_event("RISK_FAIL", order, reason)
             return False
 
@@ -68,7 +68,7 @@ class OrderManager:
             new_position = current_position_size + order.quantity
             if new_position > self.max_position_size:
                 reason = f"Order would exceed max position size. (Limit: {self.max_position_size})"
-                print(f"Risk Check FAILED: {reason}")
+                #print(f"Risk Check FAILED: {reason}")
                 self._log_risk_event("RISK_FAIL", order, reason)
                 return False
         else:
@@ -78,12 +78,12 @@ class OrderManager:
                     f"Cannot sell more shares than you own. "
                     f"(Have: {current_position_size}, Sell: {order.quantity})"
                 )
-                print(f"Risk Check FAILED: {reason}")
+                #print(f"Risk Check FAILED: {reason}")
                 self._log_risk_event("RISK_FAIL", order, reason)
                 return False
 
         # passed all checks
-        print(f"Risk Check PASSED: Order {order.side} {order.quantity} @ {order.price:.2f}")
+        #print(f"Risk Check PASSED: Order {order.side} {order.quantity} @ {order.price:.2f}")
         self.order_timestamps.append(new_time)
         self._log_risk_event("RISK_PASS", order, "All risk checks passed")
         return True
