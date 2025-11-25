@@ -1,1 +1,11 @@
 .env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs (optional - uncomment if you don't want to track logs)
+# logs/
+
+# Data files (optional - uncomment if data is too large)
+# data/
