@@ -177,4 +177,12 @@ class MyStrategy(Strategy):
         return []
 ```
 
+### References
+
+The development of this project was supported primarily by:
+
+- Course lecture slides and class materials  
+- GPT-5.1 for coding assistance and explanation  
+- Claude Sonnet 4.5 for coding assistance and explanation  
+
 
