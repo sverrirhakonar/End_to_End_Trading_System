@@ -36,9 +36,16 @@ from alpaca.trading.enums import (
     QueryOrderStatus,
     TimeInForce,
 )
-api_key = 'PKJGBG7SFXOF52CAFA2W2B467V'
-secret_key = 'FV98XpJC8mcBXAFbzvrASLef8r1R9m5b4QP7h4HFTe92'
-data_api_url = "https://data.alpaca.markets/v2"
+from dotenv import load_dotenv
+
+load_dotenv()  # Automatically finds .env in root
+
+api_key = os.getenv('ALPACA_API_KEY')
+secret_key = os.getenv('ALPACA_SECRET_KEY')
+data_api_url = os.getenv('DATA_API_URL')
+# api_key = 'PKJGBG7SFXOF52CAFA2W2B467V'
+# secret_key = 'FV98XpJC8mcBXAFbzvrASLef8r1R9m5b4QP7h4HFTe92'
+# data_api_url = "https://data.alpaca.markets/v2"
 
 stock_historical_data_client = StockHistoricalDataClient(
     api_key,
