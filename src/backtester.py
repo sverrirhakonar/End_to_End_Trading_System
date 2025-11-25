@@ -417,10 +417,6 @@ class Backtester:
         print("-" * 70)
 
         if not trade_df.empty:
-            # [Inference] realized_pnl might be cumulative in TradeRecord.
-            # To handle both cases, we use a simple heuristic:
-            # if sum of abs values is much larger than abs(last), we treat it
-            # as cumulative and convert to per trade with diff.
             cum = trade_df["realized_pnl"].astype(float)
 
             if len(cum) > 1 and cum.abs().sum() > cum.abs().iloc[-1] * 2:
