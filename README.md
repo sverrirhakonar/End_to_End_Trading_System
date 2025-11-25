@@ -166,7 +166,4 @@ class MyStrategy(Strategy):
         return []
 ```
 
-## Testing
-
-Run backtests on different time periods and symbols to validate strategies before live deployment.
 
