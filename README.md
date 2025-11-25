@@ -170,14 +170,3 @@ class MyStrategy(Strategy):
 
 Run backtests on different time periods and symbols to validate strategies before live deployment.
 
-## License
-
-MIT License
-
-## Contributing
-
-Pull requests welcome! Please ensure code follows the existing architecture patterns.
-
-## Disclaimer
-
-This software is for educational purposes. Trading involves risk. Past performance does not guarantee future results. Use at your own risk.
