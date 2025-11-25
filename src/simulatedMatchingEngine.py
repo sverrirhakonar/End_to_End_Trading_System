@@ -1,5 +1,3 @@
-# src/simulatedMatchingEngine.py
-
 import random
 import pandas as pd
 
@@ -29,16 +27,16 @@ class SimulatedMatchingEngine:
 
         print("SimulatedMatchingEngine: Initialized.")
 
-    # ------------------------------------------------------------------
+
     # Public entrypoints
-    # ------------------------------------------------------------------
+
     def process_order(self, order: Order, current_tick: "pd.Series"):
         """Process a new validated order."""
         fills = []
 
         # 1. Random rejection
         if random.random() < self.fill_reject_chance:
-            print("MatchingEngine: Order randomly REJECTED.")
+            #print("MatchingEngine: Order randomly REJECTED.")
             self.order_logger.log_event(
                 event_type="REJECTED",
                 order=order,
@@ -70,9 +68,9 @@ class SimulatedMatchingEngine:
                 break
 
             if best_bid_order.price >= current_tick["Low"]:
-                print(
-                    f"MatchingEngine: Waiting BUY order {best_bid_order.order_id} FILLED."
-                )
+                #print(
+                    #f"MatchingEngine: Waiting BUY order {best_bid_order.order_id} FILLED."
+                #)
                 popped_order = self.order_book.pop_best_bid_order()
                 fill_price = popped_order.price
                 fill_qty = popped_order.quantity
@@ -95,9 +93,9 @@ class SimulatedMatchingEngine:
                 break
 
             if best_ask_order.price <= current_tick["High"]:
-                print(
-                    f"MatchingEngine: Waiting SELL order {best_ask_order.order_id} FILLED."
-                )
+                #print(
+                    #f"MatchingEngine: Waiting SELL order {best_ask_order.order_id} FILLED."
+                #)
                 popped_order = self.order_book.pop_best_ask_order()
                 fill_price = popped_order.price
                 fill_qty = popped_order.quantity
@@ -115,9 +113,9 @@ class SimulatedMatchingEngine:
 
         return fills
 
-    # ------------------------------------------------------------------
+
     # Internal helpers
-    # ------------------------------------------------------------------
+
     def _fill_market_order(self, order: Order, current_tick: "pd.Series") -> Order | None:
         """Fill a market order at Close, possibly partially."""
         fill_price = current_tick["Close"]
@@ -126,9 +124,9 @@ class SimulatedMatchingEngine:
         if random.random() < self.partial_fill_chance:
             fill_qty = int(order.quantity * random.uniform(0.1, 0.9))
             fill_qty = max(1, fill_qty)
-            print(
-                f"MatchingEngine: Order partially filled ({fill_qty} / {order.quantity})"
-            )
+            #print(
+                #f"MatchingEngine: Order partially filled ({fill_qty} / {order.quantity})"
+            #)
 
         return self._apply_fill(
             order=order,
@@ -151,12 +149,12 @@ class SimulatedMatchingEngine:
                 can_fill_now = True
 
         if can_fill_now:
-            print("MatchingEngine: Limit order filled immediately.")
+            #print("MatchingEngine: Limit order filled immediately.")
             filled = self._fill_market_order(order, current_tick)
             if filled is not None:
                 fills.append(filled)
         else:
-            print("MatchingEngine: Limit order added to OrderBook to wait.")
+            #print("MatchingEngine: Limit order added to OrderBook to wait.")
             order_id = self.order_book.add_order(order)
             order.order_id = order_id
             order.status = "Placed"

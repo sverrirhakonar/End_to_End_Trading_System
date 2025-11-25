@@ -73,9 +73,7 @@ python run_sensitivity_report_backtester.py
 
 Runs many backtests in parallel to generate what-if analysis tables.
 It varies execution settings, strategy weights, and strategy parameters, runs each configuration as a separate job, and collects the Sharpe ratios into structured sensitivity tables.
-All results are printed and saved to `logs/sensitivity_report.xlsx`.
-Use this file to analyze parameter impact, compare configurations, and perform systematic research.
-
+All results are printed.
 ## Configuration
 
 Configuration files are in `src/settings/`:
@@ -177,18 +175,12 @@ class MyStrategy(Strategy):
         return []
 ```
 
+### References
 
-run_backtest.py
+The development of this project was supported primarily by:
 
-Runs a single full backtest using the configuration files in src/settings/.
-It loads market data, strategies, execution settings and the initial portfolio, builds all trading system components, and executes the backtest bar-by-bar.
-After completion, it prints a performance summary and plots the equity curve.
-Use this file for normal backtests, debugging, and validating strategy logic.
+- Course lecture slides and class materials  
+- GPT-5.1 for coding assistance and explanation  
+- Claude Sonnet 4.5 for coding assistance and explanation  
 
-run_sensitivity_report_backtester.py
-
-Runs many backtests in parallel to generate what-if analysis tables.
-It varies execution settings, strategy weights, and strategy parameters, runs each configuration as a separate job, and collects the Sharpe ratios into structured sensitivity tables.
-All results are printed and saved to logs/sensitivity_report.xlsx.
-Use this file to analyze parameter impact, compare configurations, and perform systematic research.
 
